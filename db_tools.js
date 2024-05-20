@@ -113,4 +113,64 @@ class SpotifyDBTools {
             })
         })
     }
+
+    //Get the users in a given session, and the number of songs they put into the DB
+    getUsers(session) {
+        //Promise wrapper
+        return new Promise((res, rej) => {
+            //Reject if connection not ready
+            if (!this.connection_ready) {
+                rej(new Error("DB Connection was not ready!"));
+                return;
+            }
+            //Select the ID, name, and song count
+            this.connection.all(`
+                        SELECT users.id, users.name, COUNT(*)
+                        FROM users, songs
+                        WHERE
+                            songs.user = user.id
+                            AND users.session = ?
+                        GROUP BY users.id;
+                    `,
+                    session, function(err, rows) {
+                //Throw any error
+                if (err) {
+                    rej(err);
+                } else {
+                    //Resolve with the ID of the new song
+                    res(rows);
+                }
+            })
+        })
+    }
+
+    //Get the song list in a given session, with the users who submitted them
+    getUsers(session) {
+        //Promise wrapper
+        return new Promise((res, rej) => {
+            //Reject if connection not ready
+            if (!this.connection_ready) {
+                rej(new Error("DB Connection was not ready!"));
+                return;
+            }
+            //Select the ID, name, and song count
+            this.connection.all(`
+                        SELECT songs.id, songs.song, user.id, user.name
+                        FROM users, songs
+                        WHERE
+                            songs.user = user.id
+                            AND songs.session = ?
+                        ORDER BY songs.song ASC
+                    `,
+                    session, function(err, rows) {
+                //Throw any error
+                if (err) {
+                    rej(err);
+                } else {
+                    //Resolve with the array of songs
+                    res(rows);
+                }
+            })
+        })
+    }
 }

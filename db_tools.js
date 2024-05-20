@@ -49,7 +49,7 @@ class SpotifyDBTools {
     }
 
     //Create a session with the given name and size
-    createSession(name, size) {
+    addSession(name, size) {
         //Wrap in a promise because promises are great
         return new Promise((res, rej) => {
             //Reject if the connection isn't ready
@@ -71,7 +71,7 @@ class SpotifyDBTools {
     }
 
     //Create a user in the given session with the given name
-    createUser(session, name) {
+    addUser(session, name) {
         //Wrap in a promise because promises are great
         return new Promise((res, rej) => {
             //Reject if the connection isn't ready
@@ -114,6 +114,77 @@ class SpotifyDBTools {
         })
     }
 
+    //Add a list of songs
+    async addSongs(session, user, songs) {
+        //Check for validity
+        if (!Array.isArray(songs)) {
+            throw new Error("Invalid songs array!")
+        }
+        //Check it's not too many songs
+        if (songs.length() > await this.getSession(session).size) {
+            throw new Error("Too many songs!")
+        }
+        //Clear all existing songs for user (they're being replaced)
+        await this.clearSongs(session, user);
+
+        //Now, finally, add the songs
+        for (let song of songs) {
+            await this.addSong(session, user, song);
+        }
+        
+        //Return the number of songs added
+        return songs.length()
+    }
+
+    //Clear all songs for a given user
+    clearSongs(session, user) {
+        //Promise wrapper
+        return new Promise((res, rej) => {
+            //Reject if connection not ready
+            if (!this.connection_ready) {
+                rej(new Error("DB Connection was not ready!"));
+                return;
+            }
+            //Basic deletion
+            this.connection.run("DELETE FROM songs WHERE session = ? AND user = ?", session, user, function(err) {
+                //Throw any error
+                if (err) {
+                    rej(err);
+                } else {
+                    //Resolve with the ID of the new song
+                    res(this.changes);
+                }
+            })
+        })
+    }
+
+    //Get the session details for a given session
+    getSession(session) {
+        //Promise wrapper
+        return new Promise((res, rej) => {
+            //Reject if connection not ready
+            if (!this.connection_ready) {
+                rej(new Error("DB Connection was not ready!"));
+                return;
+            }
+            //Select the name and song count
+            this.connection.get(`
+                        SELECT name, size
+                        FROM sessions
+                        WHERE sessions.id = ?
+                    `,
+                    session, function(err, row) {
+                //Throw any error
+                if (err) {
+                    rej(err);
+                } else {
+                    //Resolve with the ID of the new song
+                    res(row);
+                }
+            })
+        })
+    }
+
     //Get the users in a given session, and the number of songs they put into the DB
     getUsers(session) {
         //Promise wrapper
@@ -145,7 +216,7 @@ class SpotifyDBTools {
     }
 
     //Get the song list in a given session, with the users who submitted them
-    getUsers(session) {
+    getSongs(session) {
         //Promise wrapper
         return new Promise((res, rej) => {
             //Reject if connection not ready

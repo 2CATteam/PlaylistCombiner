@@ -1,5 +1,6 @@
 'use-strict'
 const sqlite3 = require('sqlite3');
+const axios = require('axios')
 const db = new sqlite3.Database('spotify.db', dbReady);
 
 //Class used for connecting to the DB
@@ -34,7 +35,8 @@ class SpotifyDBTools {
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     session TEXT,
                     user INTEGER,
-                    song TEXT
+                    song TEXT,
+                    html TEXT
                 );
             `, (err) => {
                 //Log any errors
@@ -136,6 +138,27 @@ class SpotifyDBTools {
         return songs.length()
     }
 
+    loadSongsHTML(session) {
+        this.connection.each("SELECT FROM songs WHERE html IS NULL AND session = ?", session, function(err, row) {
+            //Throw any error
+            if (err) {
+                console.error(err)
+            } else {
+                //Resolve with the ID of the new song
+                loadSongHTML(session, row.song)
+            }
+        })
+    }
+
+    loadSongHTML(session, song) {
+        song = encodeURIComponent(song)
+        axios.get("https://open.spotify.com/oembed/?url=" + song).then((response) => {
+            this.connection.run("UPDATE songs SET html = ? WHERE session = ? AND song = ?", response.html, session, song);
+        }).catch((err) => {
+            console.error(err);
+        })
+    }
+
     //Clear all songs for a given user
     clearSongs(session, user) {
         //Promise wrapper
@@ -226,7 +249,7 @@ class SpotifyDBTools {
             }
             //Select the ID, name, and song count
             this.connection.all(`
-                        SELECT songs.id, songs.song, user.id, user.name
+                        SELECT songs.id, songs.song, songs.html, user.id, user.name
                         FROM users, songs
                         WHERE
                             songs.user = user.id

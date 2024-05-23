@@ -55,6 +55,7 @@ app.post("/:session/:user/addSongs", function(req, res) {
 	} else {
 		db.addSongs(req.params.session, req.params.user, req.body.songs).then((count) => {
 			res.status(200).json({songsAdded: count})
+			db.loadSongsHTML(req.params.session)
 		}).catch((err) => {
 			res.status(400).json({error: err})
 		});

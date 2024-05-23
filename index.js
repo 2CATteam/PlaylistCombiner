@@ -62,6 +62,10 @@ app.post("/:session/:user/addSongs", function(req, res) {
 	}
 });
 
+app.get(":session/submit", function(req, res) {
+	
+})
+
 app.get("/:session/users", function(req, res) {
 	res.status(200).json({users: db.getUsers(req.params.session)})
 });

@@ -3,13 +3,33 @@ const app = express()
 var expressWs = require('express-ws')(app);
 app.set('view engine', 'pug')
 app.use(express.json())
-import SpotifyDBTools from "./db_tools"
+const SpotifyDBTools = require("./db_tools")
 
 db = new SpotifyDBTools();
 
 app.get('/', function (req, res) {
-	res.send('Hello World')
-});
+	res.render('root', {})
+})
+
+app.get('/:session([0-9A-F]{4})/', async function (req, res) {
+	res.render("session_entry", {session: await db.getSession(req.params.session)})
+})
+
+app.get('/:session/waiting', async function (req, res) {
+	res.render("waiting", {session: await db.getSession(req.params.session)})
+})
+
+app.get('/:session/quiz', async function (req, res) {
+	res.render("quiz", {
+		session: await db.getSession(req.params.session),
+		songs: await db.getSongs(req.params.session)
+	})
+})
+
+app.get(":session/submit", async function(req, res) {
+	//TODO: This
+	res.render("root", {session: await db.getSession(req.params.session)})
+})
 
 app.post("/addSession", function(req, res) {
 	sessionSettings = {
@@ -61,10 +81,6 @@ app.post("/:session/:user/addSongs", function(req, res) {
 		});
 	}
 });
-
-app.get(":session/submit", function(req, res) {
-	
-})
 
 app.get("/:session/users", function(req, res) {
 	res.status(200).json({users: db.getUsers(req.params.session)})

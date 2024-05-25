@@ -1,7 +1,7 @@
 doctype html
 html
 	head
-		title= session_name + " - Spotify Guessing Game"
+		title= session.name + " - Spotify Guessing Game"
 		meta(charset="utf-8")
 		meta(name="description", content="A game where you guess who listens to what Spotify songs")
 		meta(name="viewport", content="width=device-width, initial-scale=1.0")
@@ -9,18 +9,22 @@ html
 	body 
 		.dflex.justify-content-center
 			.p-3
-				h3= session_name 
+				h3= session.name 
 				p Welcome! To begin, log in with Spotify below:
 				button.btn.btn-primary Log in here!
 				hr
 				.dflex.justify-content-center
 					p.d-none.text-success Successfully logged in!
 				input#playlistOption(type="radio", name="inputType", value="playlist", disabled)
-					label(for="playlistOption") Playlist 
+				label(for="playlistOption") Playlist 
 				.ms-3
 					input#playlistLink.form-control(type="text", name="playlistLink")
+					p.form-text= "Your session is set to accept " + session.size + "songs per person."
+					.ms-1 
+						p.form-text= "If your playlist is longer than this, only the first " + session.size + " songs will be included"
+						p.form-text= "If your playlist is shorter than this, you will have fewer songs than others"
 				input#topSongsOption(type="radio", name="inputType", value="topSongs", disabled)
-					label(for="topSongsOption") Top Songs
+				label(for="topSongsOption") Top Songs
 				.ms-3
 					label.form-label(for="topSongsTimeRange") Time range for top songs:
 					select#topSongsTimeRange.form-control(disabled)

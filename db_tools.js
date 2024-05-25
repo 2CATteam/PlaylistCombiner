@@ -1,14 +1,13 @@
 'use-strict'
 const sqlite3 = require('sqlite3');
 const axios = require('axios')
-const db = new sqlite3.Database('spotify.db', dbReady);
 
 //Class used for connecting to the DB
 class SpotifyDBTools {
     constructor() {
         //When we start up, initialize the DB connection
         this.connection_ready = false;
-        this.connection = new sqlite3.Database('spotify.db', this.dbReady);
+        this.connection = new sqlite3.Database('spotify.db', this.dbReady.bind(this));
     }
 
     //Once the DB connection is ready, ensure that the tables exist
@@ -268,3 +267,5 @@ class SpotifyDBTools {
         })
     }
 }
+
+module.exports = SpotifyDBTools

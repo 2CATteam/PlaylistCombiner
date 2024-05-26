@@ -1,6 +1,6 @@
 'use-strict'
 const sqlite3 = require('sqlite3');
-const axios = require('axios')
+const axios = require('axios');
 
 //Class used for connecting to the DB
 class SpotifyDBTools {
@@ -58,14 +58,24 @@ class SpotifyDBTools {
                 rej(new Error("DB Connection was not ready!"));
                 return;
             }
+            //Alias the this.connection object for use in an inner function
+            let db = this.connection
             //Basic insert
-            this.connection.run("INSERT INTO sessions(id, name, size) VALUES (upper(hex(randomblob(16))), ?, ?)", name, size, function(err) {
+            this.connection.run("INSERT INTO sessions(id, name, size) VALUES (upper(hex(randomblob(4))), ?, ?)", name, size, function(err) {
                 //Throw any error which might exist
                 if (err) {
                     rej(err);
                 } else {
-                    //Otherwise, resolve with the ID of the new session
-                    res(this.lastID);
+                    //Get the ID with the row ID
+                    db.get("SELECT id FROM sessions WHERE rowid = ?", this.lastID, function(err, row) {
+                        //Throw any error which might exist
+                        if (err) {
+                            rej(err);
+                        } else {
+                            //Otherwise, resolve with the ID of the new session
+                            res(row.id);
+                        }
+                    })
                 }
             })
         })
@@ -191,7 +201,7 @@ class SpotifyDBTools {
             }
             //Select the name and song count
             this.connection.get(`
-                        SELECT name, size
+                        SELECT name, size, id
                         FROM sessions
                         WHERE sessions.id = ?
                     `,

@@ -1,0 +1,35 @@
+@media (orientation: portrait) {
+	#wrapContainer {
+		flex-direction: column;
+	}
+
+	.landscapeOnly {
+		display: none;
+	}
+
+	.root-half {
+		flex-grow: 0;
+	}
+}
+
+@media (orientation: landscape) {
+	#wrapContainer {
+		flex-direction: row;
+	}
+
+	.portraitOnly {
+		display: none;
+	}
+
+	.root-half {
+		flex-grow: 1;
+	}
+}
+
+#wrapContainer {
+	max-width: 80rem;
+}
+
+.root-half {
+	max-width: calc((80rem - 12rem) / 2);
+}

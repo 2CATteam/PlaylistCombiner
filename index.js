@@ -1,32 +1,38 @@
 const express = require('express')
 const app = express()
-var expressWs = require('express-ws')(app);
+const axios = require('axios')
 app.set('view engine', 'pug')
+const cookieParser = require('cookie-parser')
+app.use(cookieParser())
 app.use(express.json())
 const SpotifyDBTools = require("./db_tools")
+const SECRETS = require("./secrets.json")
+const LOGIN_REDIRECT = "http://localhost:3000/oauth_callback"
 
 db = new SpotifyDBTools();
+
+app.use(express.static("static"))
 
 app.get('/', function (req, res) {
 	res.render('root', {})
 })
 
-app.get('/:session([0-9A-F]{4})/', async function (req, res) {
+app.get('/:session([0-9A-F]{8})/', async function (req, res) {
 	res.render("session_entry", {session: await db.getSession(req.params.session)})
 })
 
-app.get('/:session/waiting', async function (req, res) {
+app.get('/:session([0-9A-F]{8})/waiting', async function (req, res) {
 	res.render("waiting", {session: await db.getSession(req.params.session)})
 })
 
-app.get('/:session/quiz', async function (req, res) {
+app.get('/:session([0-9A-F]{8})/quiz', async function (req, res) {
 	res.render("quiz", {
 		session: await db.getSession(req.params.session),
 		songs: await db.getSongs(req.params.session)
 	})
 })
 
-app.get(":session/submit", async function(req, res) {
+app.get(":session([0-9A-F]{8})/submit", async function(req, res) {
 	//TODO: This
 	res.render("root", {session: await db.getSession(req.params.session)})
 })
@@ -51,7 +57,7 @@ app.post("/addSession", function(req, res) {
 	}
 });
 
-app.post("/:session/addUser", function(req, res) {
+app.post("/:session([0-9A-F]{8})/addUser", function(req, res) {
 	if (!req.params.session) {
 		res.status(400).json({error: "Invalid session!"});
 	} else if (!req.body?.name) {
@@ -65,7 +71,7 @@ app.post("/:session/addUser", function(req, res) {
 	}
 });
 
-app.post("/:session/:user/addSongs", function(req, res) {
+app.post("/:session([0-9A-F]{8})/:user/addSongs", function(req, res) {
 	if (!req.params.session) {
 		res.status(400).json({error: "Invalid session!"});
 	} else if (!req.params.user) {
@@ -82,18 +88,116 @@ app.post("/:session/:user/addSongs", function(req, res) {
 	}
 });
 
-app.get("/:session/users", function(req, res) {
+app.get("/:session([0-9A-F]{8})/users", function(req, res) {
 	res.status(200).json({users: db.getUsers(req.params.session)})
 });
 
-app.get("/:session/songs", function(req, res) {
+app.get("/:session([0-9A-F]{8})/songs", function(req, res) {
 	res.status(200).json({songs: db.getSongs(req.params.session)})
 });
 
-app.ws('/echo', function(ws, req) {
-	ws.on('message', function(msg) {
-		ws.send(msg);
-	});
+//https://stackoverflow.com/questions/20728783/shortest-code-to-get-random-string-of-numbers-and-letters
+function generateRandomString(length) {
+    var chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz1234567890";
+    var randomstring = '';
+    for (var i = 0; i < length; i++) {
+        var rnum = Math.floor(Math.random() * chars.length);
+        randomstring += chars[rnum];
+    }
+    return randomstring;
+}
+
+//Spotify auth section
+app.get("/:session([0-9A-F]{8})/login", function(req, res) {
+	//https://developer.spotify.com/documentation/web-api/tutorials/code-flow
+
+
+	let state = generateRandomString(16);
+	let scope = 'playlist-read-private playlist-modify-private user-top-read user-read-recently-played';
+
+	res.cookie("session", req.params.session, { "httpOnly": true })
+	res.redirect('https://accounts.spotify.com/authorize?' +
+		new URLSearchParams({
+			response_type: 'code',
+			client_id: SECRETS.client_id,
+			scope: scope,
+			redirect_uri: LOGIN_REDIRECT,
+			state: state
+		}).toString()
+	);
+})
+
+function getAuth(req, res, options) {
+	let sessionId = req.cookies?.session || ""
+	let err_handler = function(err) {
+		console.error(err.response.data || err.request || err.message)
+		res.redirect('/' + sessionId + "?" +
+			new URLSearchParams({
+				error: 'code_rejected'
+			}).toString()
+		);
+	}
+	axios(options).then(function (response) {
+		if (response.status != 200) {
+			err_handler({ response: response })
+		}
+		res.cookie("spotify_token", response.data.access_token, {
+			maxAge: (response.data.expires_in || 10) * 1000
+		})
+		res.cookie("refresh_cookie", response.data.refresh_token)
+		res.redirect('/' + sessionId)
+	}).catch(err_handler)
+}
+
+//https://developer.spotify.com/documentation/web-api/tutorials/code-flow
+app.get('/oauth_callback', function(req, res) {
+
+	let code = req.query.code || null;
+	let state = req.query.state || null;
+
+	if (state === null) {
+		res.redirect(`/${sessionId}?` +
+			new URLSearchParams({
+				error: 'state_mismatch'
+			}).toString()
+		);
+	} else {
+		let authOptions = {
+			url: 'https://accounts.spotify.com/api/token',
+			method: "post",
+			data: {
+				code: code,
+				redirect_uri: LOGIN_REDIRECT,
+				grant_type: 'authorization_code'
+			},
+			headers: {
+				'content-type': 'application/x-www-form-urlencoded',
+				'Authorization': 'Basic ' + (new Buffer.from(SECRETS.client_id + ':' + SECRETS.client_secret).toString('base64'))
+			}
+		};
+		getAuth(req, res, authOptions)
+	}
 });
+
+app.get('/:session/refresh_token', function(req, res) {
+	let refresh_token = req.cookies?.refresh_cookie
+	if (!refresh_token) {
+		res.sendStatus(400)
+	} else {
+		let authOptions = {
+			url: 'https://accounts.spotify.com/api/token',
+			headers: {
+				'content-type': 'application/x-www-form-urlencoded',
+				'Authorization': 'Basic ' + (new Buffer.from(client_id + ':' + client_secret).toString('base64'))
+			},
+			data: {
+				grant_type: 'refresh_token',
+				refresh_token: refresh_token
+			},
+			json: true
+		};
+		getAuth(req, res, authOptions);
+	}
+})
 
 app.listen(3000)

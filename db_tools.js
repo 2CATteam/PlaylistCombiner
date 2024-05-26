@@ -10,6 +10,20 @@ class SpotifyDBTools {
         this.connection = new sqlite3.Database('spotify.db', this.dbReady.bind(this));
     }
 
+    static SESSION_MODES = {
+        CUSTOM_PLAYLIST: 0,
+        TOP_SONGS: 1,
+        LIKED_SONGS: 2,
+        LAST_PLAYED: 3
+    }
+
+    static SESSION_MODE_NAMES = {
+        CUSTOM_PLAYLIST: "Use a specific Playlist",
+        TOP_SONGS: "Use our Top Songs",
+        LIKED_SONGS: "Use our Liked Songs",
+        LAST_PLAYED: "Use our Last Played songs"
+    }
+
     //Once the DB connection is ready, ensure that the tables exist
     dbReady(err) {
         //First, log any errors
@@ -21,7 +35,8 @@ class SpotifyDBTools {
                 CREATE TABLE IF NOT EXISTS sessions(
                     id TEXT PRIMARY KEY,
                     name TEXT,
-                    size INTEGER
+                    size INTEGER,
+                    mode INTEGER
                 );
 
                 CREATE TABLE IF NOT EXISTS users(
@@ -50,7 +65,7 @@ class SpotifyDBTools {
     }
 
     //Create a session with the given name and size
-    addSession(name, size) {
+    addSession(name, size, mode) {
         //Wrap in a promise because promises are great
         return new Promise((res, rej) => {
             //Reject if the connection isn't ready
@@ -61,7 +76,7 @@ class SpotifyDBTools {
             //Alias the this.connection object for use in an inner function
             let db = this.connection
             //Basic insert
-            this.connection.run("INSERT INTO sessions(id, name, size) VALUES (upper(hex(randomblob(4))), ?, ?)", name, size, function(err) {
+            this.connection.run("INSERT INTO sessions(id, name, size, mode) VALUES (upper(hex(randomblob(4))), ?, ?, ?)", name, size, function(err) {
                 //Throw any error which might exist
                 if (err) {
                     rej(err);
@@ -201,7 +216,7 @@ class SpotifyDBTools {
             }
             //Select the name and song count
             this.connection.get(`
-                        SELECT name, size, id
+                        SELECT name, size, id, mode
                         FROM sessions
                         WHERE sessions.id = ?
                     `,

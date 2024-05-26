@@ -14,7 +14,7 @@ db = new SpotifyDBTools();
 app.use(express.static("static"))
 
 app.get('/', function (req, res) {
-	res.render('root', {})
+	res.render('root', {session_modes: SpotifyDBTools.SESSION_MODES, session_names: SpotifyDBTools.SESSION_MODE_NAMES})
 })
 
 app.get('/:session([0-9A-F]{8})/', async function (req, res) {
@@ -40,7 +40,8 @@ app.get(":session([0-9A-F]{8})/submit", async function(req, res) {
 app.post("/addSession", function(req, res) {
 	sessionSettings = {
 		name: req.body?.name,
-		size: req.body?.size
+		size: req.body?.size,
+		mode: req.body?.mode
 	};
 	if (!sessionSettings.name) {
 		res.status(400).json({error: "Invalid name!"});
@@ -48,6 +49,17 @@ app.post("/addSession", function(req, res) {
 		res.status(400).json({error: "Invalid size!"});
 	} else if (sessionSettings.size < 1 || sessionSettings.size > 50) {
 		res.status(400).json({error: "Size must be between 1 and 50!"});
+	} else if (sessionSettings.mode == null
+		|| isNaN(sessionSettings.mode)
+		|| !Number.isInteger(sessionSettings.mode)
+		|| sessionSettings.mode < SpotifyDBTools.SESSION_MODES.CUSTOM_PLAYLIST
+		|| sessionSettings.mode > SpotifyDBTools.SESSION_MODES.LAST_PLAYED) {
+
+		console.error(sessionSettings.mode)
+		console.log(Number.isInteger(sessionSettings.mode))
+		console.log(SpotifyDBTools.SESSION_MODES.CUSTOM_PLAYLIST)
+		console.log(SpotifyDBTools.SESSION_MODES.LAST_PLAYED)
+		res.status(400).json({error: "Invalid mode!"});
 	} else {
 		db.addSession(sessionSettings.name, sessionSettings.size).then((id) => {
 			res.status(200).json({sessionId: id})

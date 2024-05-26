@@ -32,6 +32,11 @@ html
 							option(value="5") 5
 							option(value="10") 10
 							option(value="20") 20
+					.mb-3 
+						label.form-label(for="songMode") How should songs be selected?
+						select#songMode.form-control
+							each key in Object.keys(session_modes)
+								option(value=session_modes[key])= session_names[key]
 					button.btn.btn-primary(type="button", onclick="createSession()") Create session 
 					p.form-text.text-wrap You will be redirected to a page for your session. Once you get there, share the page with your friends to invite them!
 		script(src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous") 
@@ -54,7 +59,8 @@ html
 			function createSession() {
 				let name = document.querySelector("#sessionName").value
 				let size = document.querySelector("#songCount").value
-				postRequest(`/addSession`, {name: name, size: size}, function() {
+				let mode = parseInt(document.querySelector("#songMode").value)
+				postRequest(`/addSession`, {name: name, size: size, mode: mode}, function() {
 					console.log(this.status)
 					console.log(this.responseText)
 

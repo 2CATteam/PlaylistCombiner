@@ -41,30 +41,43 @@ app.get('/:session([0-9A-F]{8})/quiz', async function (req, res) {
 	})
 })
 
-app.get(":session([0-9A-F]{8})/submit", async function(req, res) {
-	//TODO: This
-	console.log(req.query.answers)
-	console.log(req.query.songs)
+app.get("/:session([0-9A-F]{8})/submit", async function(req, res) {
+	res.cookie("songs", req.query.songs)
+	res.cookie("answers", req.query.answers)
+	res.redirect(`/${req.params.session}/results`)
+})
+
+app.get("/:session([0-9A-F]{8})/results", async function(req, res) {
+	let quiz_songs = req.cookies.songs.split(",")
+	console.log(quiz_songs)
+	res.clearCookie("songs")
+	let quiz_answers = req.cookies.answers.split(",")
+	res.clearCookie("answers")
+
 	let songs = await db.getSongs(req.params.session)
 	let users = await db.getUsers(req.params.session)
-	console.log(songs)
 	let filled_answers = []
-	for (let i in req.query.songs) {
+	for (let i in quiz_songs) {
 		filled_answers.push({
-			song_id: req.query.songs[i],
-			given_answer: { id: req.query.answers[i], name: "UNKNOWN"},
+			song_id: quiz_songs[i],
+			given_answer: { id: quiz_answers[i], name: "UNKNOWN"},
 			correct_answers: []
 		})
 		for (let j in songs) {
-			if (songs[j].id == req.query.songs[i]) {
+			if (songs[j].song_id == quiz_songs[i]) {
 				filled_answers[i].song_data = songs[j].song
-				filled_answers[i].song_html = songs[j].song_html
-				filled_answers[i].correct_answers.push({id: songs[j].userId, name: songs[j].name})
+				continue
+			}
+		}
+		for (let j in songs) {
+			if (songs[j].song == filled_answers[i].song_data) {
+				filled_answers[i].song_html = songs[j].html
+				filled_answers[i].correct_answers.push({id: songs[j].user_id, name: songs[j].name})
 			}
 		}
 		for (let j of users) {
-			if (filled_answers[i].given_answer.id == users[j].id) {
-				filled_answers[i].given_answer.name = users[j].name
+			if (filled_answers[i].given_answer.id == j.id) {
+				filled_answers[i].given_answer.name = j.name
 			}
 		}
 	}
@@ -83,17 +96,11 @@ app.get(":session([0-9A-F]{8})/submit", async function(req, res) {
 		}
 	}
 
-	res.cookie("filled_answers", filled_answers)
+	console.log(filled_answers)
 
-	res.redirect(`/${req.params.session}/results`)
-})
-
-app.get(":session([0-9A-F]{8})/results", async function(req, res) {
-	let filled_answers = req.cookies.filled_answers
-	res.clearCookie("filled_answers")
 	res.render("results", {
 		session: await db.getSession(req.params.session),
-		songs: await db.getSongs(req.params.session),
+		songs: songs,
 		filled_answers: filled_answers
 	})
 })
@@ -290,7 +297,7 @@ app.get('/:session([0-9A-F]{8})/refresh_token', function(req, res) {
 			json: true
 		};
 		getAuth(req, res, authOptions, (req, res) => {
-
+			res.sendStatus(200).end()
 		});
 	}
 })

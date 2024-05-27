@@ -10,17 +10,21 @@ html
 		.d-flex.justify-content-center.bg-success.p-5.min-vh-100
 			.d-flex.w-100.justify-content-center.align-items-center.p-5#wrapContainer.bg-light.rounded-5
 				.d-flex.flex-column
-					each song, idx in songs 
-						.d-flex.flex-column.align-items-stretch.guess-div(style="min-width: 456px")
-							h3= "Song #" + (idx + 1)
-							!= song.html
-							p.d-none= song.id
-							label.mt-3.form-label My guess:
-								select.form-select
-									each user in users
-										if !includeMe || (user.id != this_user)
-											option(value=user.id)= user.name
-							hr.m-3
+					h1.text-center= session.name
+					- let idx = 0
+					each song in songs 
+						if include_me == 1 || (song.user_id != this_user)
+							- idx += 1
+							.d-flex.flex-column.align-items-stretch.guess-div(style="min-width: 456px")
+								h3= "Song #" + idx
+								!= song.html
+								p.d-none= song.song_id
+								label.mt-3.form-label My guess:
+									select.form-select
+										each user in users
+											if include_me || (user.id != this_user)
+												option(value=user.id)= user.name
+								hr.m-3
 					button.btn.btn-primary(onclick="submit()") Submit!
 		script(src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous") 
 		script. 

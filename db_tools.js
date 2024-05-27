@@ -305,7 +305,7 @@ class SpotifyDBTools {
             }
             //Select the ID, name, and song count
             this.connection.all(`
-                        SELECT songs.id, songs.song, songs.html, users.id, users.name
+                        SELECT songs.id AS song_id, songs.song, songs.html, users.id AS user_id, users.name
                         FROM users, songs
                         WHERE
                             songs.user = users.id
@@ -318,7 +318,7 @@ class SpotifyDBTools {
                     rej(err);
                 } else {
                     //Shuffle the array of rows
-                    shuffleSeed.shuffle(rows, rows.length)
+                    rows = shuffleSeed.shuffle(rows, rows.length)
                     //Resolve with the array of songs
                     res(rows);
                 }

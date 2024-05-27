@@ -8,7 +8,7 @@ app.use(cookieParser())
 app.use(express.json())
 const SpotifyDBTools = require("./db_tools")
 const SECRETS = require("./secrets.json")
-const LOGIN_REDIRECT = "http://spotify-game.schmessage.com/oauth_callback"
+const LOGIN_REDIRECT = "https://spotify-game.schmessage.com/oauth_callback"
 
 db = new SpotifyDBTools();
 

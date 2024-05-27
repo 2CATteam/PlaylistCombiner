@@ -17,7 +17,7 @@ html
 						h5.wrap-text Welcome! You've been invited to play a game of song guessing!
 						
 						if session.mode == session_modes.CUSTOM_PLAYLIST
-							p= `Once you log in below, you'll be asked to provide a playlist of at least ${session.size} songs.`
+							p= `Once you log in below with Spotify, you'll be asked to provide a playlist of at least ${session.size} songs.`
 							p This playlist will be mixed with your friends', and you'll need to guess whose playlist a song came from.
 							p Afterwards, you'll be given the option to save the combined playlist! 
 							if session.dedupe 
@@ -27,20 +27,20 @@ html
 							- if (session.top_songs_range == "short_term") range = "month"
 							- if (session.top_songs_range == "medium_term") range = "6 months"
 							- if (session.top_songs_range == "long_term") range = "year (or so)"
-							p= `Once you log in below, we'll pull your top ${session.size} songs from the last ${range} for you!`
+							p= `Once you log in below with Spotify, we'll pull your top ${session.size} songs from the last ${range} for you!`
 							p These will be mixed with your friends', and you'll need to guess whose Top Songs a song came from.
 							p Afterwards, you'll be given the option to save the combined playlist! 
 						if session.mode == session_modes.LIKED_SONGS
-							p= `Once you log in below, we'll pull your ${session.size} most recently-liked songs for you!`
+							p= `Once you log in below with Spotify, we'll pull your ${session.size} most recently-liked songs for you!`
 							p These will be mixed with your friends', and you'll need to guess whose Liked Songs a song came from.
 							p Afterwards, you'll be given the option to save the combined playlist! 
 						if session.mode == session_modes.LAST_PLAYED
-							p= `Once you log in below, we'll pull your ${session.size} most recently-played songs for you!`
+							p= `Once you log in below with Spotify, we'll pull your ${session.size} most recently-played songs for you!`
 							p These will be mixed with your friends', and you'll need to guess whose recent songs a song came from.
 							p Afterwards, you'll be given the option to save the combined playlist! 
 						if session.dedupe 
 							p <strong>Note that, if an artist has multiple songs, only the first song from each artist will be taken.</strong><br>This may result in fewer than #{session.size} being pulled for you.
-						a.btn.btn-primary#authLink(href="/" + session.id + "/login") Log in here to begin!	
+						a.btn.btn-primary#authLink(href="/" + session.id + "/login") Click here to log in with Spotify!	
 						.d-flex.w-100.justify-content-center.d-none#successText
 							p.text-success Successfully logged in!
 						hr

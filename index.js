@@ -2,10 +2,12 @@ const shuffleSeed = require('shuffle-seed');
 const express = require('express')
 const app = express()
 const axios = require('axios')
+const favicon = require('serve-favicon')
 app.set('view engine', 'pug')
 const cookieParser = require('cookie-parser')
 app.use(cookieParser())
 app.use(express.json())
+app.use(favicon(path.join(__dirname, 'static', 'favicon.ico')))
 const SpotifyDBTools = require("./db_tools")
 const SECRETS = require("./secrets.json")
 const LOGIN_REDIRECT = "https://spotify-game.schmessage.com/oauth_callback"

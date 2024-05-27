@@ -68,7 +68,7 @@ html
 					mode: mode,
 					dedupe: dedupe,
 					top_songs_range: top_songs_range
-				}).then((response) => {
+				}, {"Content-type": "application/json"}).then((response) => {
 					let responseBody = JSON.parse(response.responseText)
 					let sessionId = responseBody.sessionId
 					window.location.href = `/${sessionId}`

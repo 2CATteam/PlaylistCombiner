@@ -166,7 +166,7 @@ app.get("/:session([0-9A-F]{8})/login", function(req, res) {
 
 
 	let state = generateRandomString(16);
-	let scope = 'playlist-read-private playlist-modify-private user-top-read user-read-recently-played';
+	let scope = 'playlist-read-private playlist-modify-private user-top-read user-read-recently-played user-library-read';
 
 	res.cookie("session", req.params.session, { "httpOnly": true })
 	res.redirect('https://accounts.spotify.com/authorize?' +

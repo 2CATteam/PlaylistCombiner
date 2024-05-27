@@ -22,7 +22,7 @@ html
 								label.mt-3.form-label My guess:
 									select.form-select
 										each user in users
-											if include_me || (user.id != this_user)
+											if include_me == 1 || (user.id != this_user)
 												option(value=user.id)= user.name
 								hr.m-3
 					button.btn.btn-primary(onclick="submit()") Submit!
@@ -39,5 +39,5 @@ html
 				})
 
 				let params = new URLSearchParams({answers: answers_order, songs: songs_order})
-				window.location.href = `/!{session.id}/submit?${params.toString()}`
+				window.location.href = `/#{session.id}/submit?${params.toString()}`
 			}

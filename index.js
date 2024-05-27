@@ -46,16 +46,18 @@ app.get('/:session([0-9A-F]{8})/quiz', async function (req, res) {
 })
 
 app.get("/:session([0-9A-F]{8})/submit", async function(req, res) {
-	res.cookie("songs", req.query.songs)
-	res.cookie("answers", req.query.answers)
+	res.cookie("songs", req.query.songs, {httpOnly: true})
+	res.cookie("answers", req.query.answers, {httpOnly: true})
 	res.redirect(`/${req.params.session}/results`)
 })
 
 app.get("/:session([0-9A-F]{8})/results", async function(req, res) {
-	let quiz_songs = req.cookies.songs.split(",")
-	res.clearCookie("songs")
-	let quiz_answers = req.cookies.answers.split(",")
-	res.clearCookie("answers")
+	let quiz_songs = req.cookies?.songs?.split(",")
+	let quiz_answers = req.cookies?.answers?.split(",")
+	if (!quiz_songs || !quiz_answers) {
+		res.status(400).end()
+		return
+	}
 
 	let filled_answers = await db.checkAnswers(req.params.session, quiz_songs, quiz_answers)
 	res.render("results", {
@@ -180,7 +182,7 @@ app.get("/:session([0-9A-F]{8})/login", function(req, res) {
 
 function getAuth(req, res, options, callback) {
 	let err_handler = function(err) {
-		//console.error(err.response.data || err.request || err.message)
+		console.error(err.response.data || err.request || err.message)
 		res.redirect(req.path + "?" +
 			new URLSearchParams({
 				error: 'code_rejected'
@@ -246,6 +248,7 @@ app.get('/:session([0-9A-F]{8})/refresh_token', function(req, res) {
 		res.cookie("session", req.params.session, { "httpOnly": true })
 		let authOptions = {
 			url: 'https://accounts.spotify.com/api/token',
+			method: "post",
 			headers: {
 				'content-type': 'application/x-www-form-urlencoded',
 				'Authorization': 'Basic ' + (new Buffer.from(SECRETS.client_id + ':' + SECRETS.client_secret).toString('base64'))

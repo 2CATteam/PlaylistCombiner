@@ -266,3 +266,4 @@ app.get('/:session([0-9A-F]{8})/refresh_token', function(req, res) {
 })
 
 app.listen(4000)
+console.log("Starting up, listening on port 4000!")

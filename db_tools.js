@@ -36,7 +36,9 @@ class SpotifyDBTools {
                     id TEXT PRIMARY KEY,
                     name TEXT,
                     size INTEGER,
-                    mode INTEGER
+                    mode INTEGER,
+                    dedupe INTEGER,
+                    top_songs_range TEXT
                 );
 
                 CREATE TABLE IF NOT EXISTS users(
@@ -65,7 +67,7 @@ class SpotifyDBTools {
     }
 
     //Create a session with the given name and size
-    addSession(name, size, mode) {
+    addSession(name, size, mode, dedupe, top_songs_range) {
         //Wrap in a promise because promises are great
         return new Promise((res, rej) => {
             //Reject if the connection isn't ready
@@ -76,28 +78,35 @@ class SpotifyDBTools {
             //Alias the this.connection object for use in an inner function
             let db = this.connection
             //Basic insert
-            this.connection.run("INSERT INTO sessions(id, name, size, mode) VALUES (upper(hex(randomblob(4))), ?, ?, ?)", name, size, function(err) {
-                //Throw any error which might exist
-                if (err) {
-                    rej(err);
-                } else {
-                    //Get the ID with the row ID
-                    db.get("SELECT id FROM sessions WHERE rowid = ?", this.lastID, function(err, row) {
-                        //Throw any error which might exist
-                        if (err) {
-                            rej(err);
-                        } else {
-                            //Otherwise, resolve with the ID of the new session
-                            res(row.id);
-                        }
-                    })
+            this.connection.run("INSERT INTO sessions(id, name, size, mode, dedupe, top_songs_range) VALUES (upper(hex(randomblob(4))), ?, ?, ?, ?, ?)",
+                name,
+                size,
+                mode,
+                dedupe ? 1 : 0,
+                top_songs_range,
+                function(err) {
+                    //Throw any error which might exist
+                    if (err) {
+                        rej(err);
+                    } else {
+                        //Get the ID with the row ID
+                        db.get("SELECT id FROM sessions WHERE rowid = ?", this.lastID, function(err, row) {
+                            //Throw any error which might exist
+                            if (err) {
+                                rej(err);
+                            } else {
+                                //Otherwise, resolve with the ID of the new session
+                                res(row.id);
+                            }
+                        })
+                    }
                 }
-            })
+            )
         })
     }
 
     //Create a user in the given session with the given name
-    addUser(session, name) {
+    addUser(session, name, id) {
         //Wrap in a promise because promises are great
         return new Promise((res, rej) => {
             //Reject if the connection isn't ready
@@ -106,15 +115,27 @@ class SpotifyDBTools {
                 return;
             }
             //Basic insert
-            this.connection.run("INSERT INTO users(session, name) VALUES (?, ?)", session, name, function(err) {
-                //Throw any error which might exist
-                if (err) {
-                    rej(err);
-                } else {
-                    //Otherwise, resolve with the ID of the new session
-                    res(this.lastID);
-                }
-            })
+            if (id == null) {
+                this.connection.run("INSERT INTO users(session, name) VALUES (?, ?)", session, name, function(err) {
+                    //Throw any error which might exist
+                    if (err) {
+                        rej(err);
+                    } else {
+                        //Otherwise, resolve with the ID of the new session
+                        res(this.lastID);
+                    }
+                })
+            } else {
+                this.connection.run("UPDATE users SET name = ? WHERE id = ? AND session = ?", name, id, session, function(err) {
+                    //Throw any error which might exist
+                    if (err) {
+                        rej(err);
+                    } else {
+                        //Otherwise, resolve with the ID of the new session
+                        res(null);
+                    }
+                })
+            }
         })
     }
 
@@ -147,37 +168,47 @@ class SpotifyDBTools {
             throw new Error("Invalid songs array!")
         }
         //Check it's not too many songs
-        if (songs.length() > await this.getSession(session).size) {
+        if (songs.length > await this.getSession(session).size) {
             throw new Error("Too many songs!")
         }
+
         //Clear all existing songs for user (they're being replaced)
-        await this.clearSongs(session, user);
+        try {
+            await this.clearSongs(session, user);
+        } catch(err) {
+            throw err
+        }
 
         //Now, finally, add the songs
         for (let song of songs) {
-            await this.addSong(session, user, song);
+            try {
+                await this.addSong(session, user, song);
+            } catch(err) {
+                throw err
+            }
         }
         
         //Return the number of songs added
-        return songs.length()
+        return songs.length
     }
 
     loadSongsHTML(session) {
-        this.connection.each("SELECT FROM songs WHERE html IS NULL AND session = ?", session, function(err, row) {
+        this.connection.each("SELECT * FROM songs WHERE html IS NULL AND session = ?", session, (err, row) => {
             //Throw any error
             if (err) {
                 console.error(err)
             } else {
                 //Resolve with the ID of the new song
-                loadSongHTML(session, row.song)
+                this.loadSongHTML(session, row.song)
             }
         })
     }
 
     loadSongHTML(session, song) {
-        song = encodeURIComponent(song)
-        axios.get("https://open.spotify.com/oembed/?url=" + song).then((response) => {
-            this.connection.run("UPDATE songs SET html = ? WHERE session = ? AND song = ?", response.html, session, song);
+        let song_link = 'https://open.spotify.com/track/' + song
+        song_link = encodeURIComponent(song_link)
+        axios.get("https://open.spotify.com/oembed/?url=" + song_link).then((response) => {
+            this.connection.run("UPDATE songs SET html = ? WHERE session = ? AND song = ?", response.data.html, session, song);
         }).catch((err) => {
             console.error(err);
         })
@@ -216,7 +247,7 @@ class SpotifyDBTools {
             }
             //Select the name and song count
             this.connection.get(`
-                        SELECT name, size, id, mode
+                        SELECT name, size, id, mode, dedupe, top_songs_range
                         FROM sessions
                         WHERE sessions.id = ?
                     `,
@@ -243,10 +274,10 @@ class SpotifyDBTools {
             }
             //Select the ID, name, and song count
             this.connection.all(`
-                        SELECT users.id, users.name, COUNT(*)
+                        SELECT users.id, users.name, COUNT(*) AS song_count
                         FROM users, songs
                         WHERE
-                            songs.user = user.id
+                            songs.user = users.id
                             AND users.session = ?
                         GROUP BY users.id;
                     `,

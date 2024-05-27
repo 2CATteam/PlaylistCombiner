@@ -14,15 +14,21 @@ db = new SpotifyDBTools();
 app.use(express.static("static"))
 
 app.get('/', function (req, res) {
-	res.render('root', {session_modes: SpotifyDBTools.SESSION_MODES, session_names: SpotifyDBTools.SESSION_MODE_NAMES})
+	res.render('root', {
+		session_modes: SpotifyDBTools.SESSION_MODES,
+		session_names: SpotifyDBTools.SESSION_MODE_NAMES
+	})
 })
 
 app.get('/:session([0-9A-F]{8})/', async function (req, res) {
-	res.render("session_entry", {session: await db.getSession(req.params.session)})
-})
-
-app.get('/:session([0-9A-F]{8})/waiting', async function (req, res) {
-	res.render("waiting", {session: await db.getSession(req.params.session)})
+	if (req.query.error) {
+		res.sendStatus(400)
+	}
+	res.render("session_entry", {
+		session: await db.getSession(req.params.session),
+		session_modes: SpotifyDBTools.SESSION_MODES,
+		session_names: SpotifyDBTools.SESSION_MODE_NAMES
+	})
 })
 
 app.get('/:session([0-9A-F]{8})/quiz', async function (req, res) {
@@ -41,7 +47,9 @@ app.post("/addSession", function(req, res) {
 	sessionSettings = {
 		name: req.body?.name,
 		size: req.body?.size,
-		mode: req.body?.mode
+		mode: req.body?.mode,
+		dedupe: req.body?.mode,
+		top_songs_range: req.body?.top_songs_range
 	};
 	if (!sessionSettings.name) {
 		res.status(400).json({error: "Invalid name!"});
@@ -53,15 +61,23 @@ app.post("/addSession", function(req, res) {
 		|| isNaN(sessionSettings.mode)
 		|| !Number.isInteger(sessionSettings.mode)
 		|| sessionSettings.mode < SpotifyDBTools.SESSION_MODES.CUSTOM_PLAYLIST
-		|| sessionSettings.mode > SpotifyDBTools.SESSION_MODES.LAST_PLAYED) {
-
-		console.error(sessionSettings.mode)
-		console.log(Number.isInteger(sessionSettings.mode))
-		console.log(SpotifyDBTools.SESSION_MODES.CUSTOM_PLAYLIST)
-		console.log(SpotifyDBTools.SESSION_MODES.LAST_PLAYED)
+		|| sessionSettings.mode > SpotifyDBTools.SESSION_MODES.LAST_PLAYED
+	) {
 		res.status(400).json({error: "Invalid mode!"});
+	} else if (sessionSettings.dedupe == null) {
+		res.status(400).json({error: "Invalid dedupe setting!"});
+	} else if (sessionSettings.mode == SpotifyDBTools.SESSION_MODES.TOP_SONGS
+		&& sessionSettings.top_songs_range.length == 0
+	) {
+		res.status(400).json({error: "Invalid range setting!"});
 	} else {
-		db.addSession(sessionSettings.name, sessionSettings.size).then((id) => {
+		db.addSession(
+			sessionSettings.name,
+			sessionSettings.size,
+			sessionSettings.mode,
+			sessionSettings.dedupe,
+			sessionSettings.top_songs_range
+		).then((id) => {
 			res.status(200).json({sessionId: id})
 		}).catch((err) => {
 			res.status(400).json({error: err})
@@ -75,8 +91,9 @@ app.post("/:session([0-9A-F]{8})/addUser", function(req, res) {
 	} else if (!req.body?.name) {
 		res.status(400).json({error: "Invalid name!"});
 	} else {
-		db.addUser(req.params.session, req.body?.name).then((id) => {
-			res.status(200).json({sessionId: id})
+		db.addUser(req.params.session, req.body?.name, req.cookies?.user).then((id) => {
+			res.cookie("user", id || req.cookies?.user)
+			res.status(200).json({userId: id || req.cookies?.user})
 		}).catch((err) => {
 			res.status(400).json({error: err})
 		});
@@ -88,20 +105,22 @@ app.post("/:session([0-9A-F]{8})/:user/addSongs", function(req, res) {
 		res.status(400).json({error: "Invalid session!"});
 	} else if (!req.params.user) {
 		res.status(400).json({error: "Invalid user!"});
-	} else if (!req.body.songs) {
+	} else if (!req.body?.songs) {
+		console.log(req.body)
 		res.status(400).json({error: "Invalid song list!"});
 	} else {
 		db.addSongs(req.params.session, req.params.user, req.body.songs).then((count) => {
 			res.status(200).json({songsAdded: count})
 			db.loadSongsHTML(req.params.session)
 		}).catch((err) => {
+			console.log("Returning error")
 			res.status(400).json({error: err})
 		});
 	}
 });
 
-app.get("/:session([0-9A-F]{8})/users", function(req, res) {
-	res.status(200).json({users: db.getUsers(req.params.session)})
+app.get("/:session([0-9A-F]{8})/users", async function(req, res) {
+	res.status(200).json({users: await db.getUsers(req.params.session)})
 });
 
 app.get("/:session([0-9A-F]{8})/songs", function(req, res) {
@@ -139,11 +158,10 @@ app.get("/:session([0-9A-F]{8})/login", function(req, res) {
 	);
 })
 
-function getAuth(req, res, options) {
-	let sessionId = req.cookies?.session || ""
+function getAuth(req, res, options, callback) {
 	let err_handler = function(err) {
-		console.error(err.response.data || err.request || err.message)
-		res.redirect('/' + sessionId + "?" +
+		//console.error(err.response.data || err.request || err.message)
+		res.redirect(req.path + "?" +
 			new URLSearchParams({
 				error: 'code_rejected'
 			}).toString()
@@ -157,7 +175,8 @@ function getAuth(req, res, options) {
 			maxAge: (response.data.expires_in || 10) * 1000
 		})
 		res.cookie("refresh_cookie", response.data.refresh_token)
-		res.redirect('/' + sessionId)
+		callback(req, res)
+		
 	}).catch(err_handler)
 }
 
@@ -166,6 +185,11 @@ app.get('/oauth_callback', function(req, res) {
 
 	let code = req.query.code || null;
 	let state = req.query.state || null;
+
+	if (req.query.error) {
+		res.sendStatus(400)
+		return
+	}
 
 	if (state === null) {
 		res.redirect(`/${sessionId}?` +
@@ -187,20 +211,24 @@ app.get('/oauth_callback', function(req, res) {
 				'Authorization': 'Basic ' + (new Buffer.from(SECRETS.client_id + ':' + SECRETS.client_secret).toString('base64'))
 			}
 		};
-		getAuth(req, res, authOptions)
+		getAuth(req, res, authOptions, (req, res) => {
+			let sessionId = req.cookies?.session || ""
+			res.redirect('/' + sessionId)
+		})
 	}
 });
 
-app.get('/:session/refresh_token', function(req, res) {
+app.get('/:session([0-9A-F]{8})/refresh_token', function(req, res) {
 	let refresh_token = req.cookies?.refresh_cookie
-	if (!refresh_token) {
+	if (!refresh_token || req.query.error) {
 		res.sendStatus(400)
 	} else {
+		res.cookie("session", req.params.session, { "httpOnly": true })
 		let authOptions = {
 			url: 'https://accounts.spotify.com/api/token',
 			headers: {
 				'content-type': 'application/x-www-form-urlencoded',
-				'Authorization': 'Basic ' + (new Buffer.from(client_id + ':' + client_secret).toString('base64'))
+				'Authorization': 'Basic ' + (new Buffer.from(SECRETS.client_id + ':' + SECRETS.client_secret).toString('base64'))
 			},
 			data: {
 				grant_type: 'refresh_token',
@@ -208,7 +236,9 @@ app.get('/:session/refresh_token', function(req, res) {
 			},
 			json: true
 		};
-		getAuth(req, res, authOptions);
+		getAuth(req, res, authOptions, (req, res) => {
+
+		});
 	}
 })
 

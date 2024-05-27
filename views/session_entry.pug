@@ -10,30 +10,286 @@ html
 	body 
 		.d-flex.justify-content-center.bg-success.p-5.min-vh-100
 			.d-flex.w-100.justify-content-center.align-items-center.p-5#wrapContainer.bg-light.rounded-5
-				.p-3
-					h3.text-center= session.name 
-					.d-flex.w-100.justify-content-center.flex-column.align-items-center
-						p.wrap-text Welcome! You've been invited to play a game of song guessing!
-						p To begin, log in with Spotify below:
-						a.btn.btn-primary(href="/" + session.id + "/login") Log in here!
-					hr
-					.d-flex.justify-content-center
-						p.d-none.text-success Successfully logged in!
-					input#playlistOption(type="radio", name="inputType", value="playlist", disabled)
-					label.ms-2(for="playlistOption") Playlist 
-					.ms-3
-						input#playlistLink.form-control(type="text", name="playlistLink")
-						p.form-text= "Your session is set to accept " + session.size + " songs per person."
-						.ms-3 
-							p.form-text= "If your playlist is longer than this, only the first " + session.size + " songs will be included"
-							p.form-text= "If your playlist is shorter than this, you will have fewer songs than others"
-					input#topSongsOption(type="radio", name="inputType", value="topSongs", disabled)
-					label.ms-2(for="topSongsOption") Top Songs
-					.ms-3
-						label.form-label(for="topSongsTimeRange") Time range for top songs:
-						select#topSongsTimeRange.form-control(disabled)
-							option(value="short_term") Short Term (~4 weeks)
-							option(value="medium_term") Medium Term (~6 months)
-							option(value="long_term") Long Term (1+ years)
-					button.btn.btn-primary(disabled) Submit your songs!
+				.d-flex.flex-column.align-items-stretch
+					h3.mb-3.text-center= session.name 
+					.d-flex.w-100.justify-content-center.flex-column#loginStep
+						h5.wrap-text Welcome! You've been invited to play a game of song guessing!
+						
+						if session.mode == session_modes.CUSTOM_PLAYLIST
+							p= `Once you log in below, you'll be asked to provide a playlist of at least ${session.size} songs.`
+							p This playlist will be mixed with your friends', and you'll need to guess whose playlist a song came from.
+							p Afterwards, you'll be given the option to save the combined playlist! 
+							if session.dedupe 
+								p Note that, if an artist has multiple songs on your playlist, only the first song from each artist will be taken.
+						if session.mode == session_modes.TOP_SONGS
+							- let range = "UNKNOWN"
+							- if (session.top_songs_range == "short_term") range = "month"
+							- if (session.top_songs_range == "medium_term") range = "6 months"
+							- if (session.top_songs_range == "long_term") range = "year (or so)"
+							p= `Once you log in below, we'll pull your top ${session.size} songs from the last ${range} for you!`
+							p These will be mixed with your friends', and you'll need to guess whose Top Songs a song came from.
+							p Afterwards, you'll be given the option to save the combined playlist! 
+						if session.mode == session_modes.LIKED_SONGS
+							p= `Once you log in below, we'll pull your ${session.size} most recently-liked songs for you!`
+							p These will be mixed with your friends', and you'll need to guess whose Liked Songs a song came from.
+							p Afterwards, you'll be given the option to save the combined playlist! 
+						if session.mode == session_modes.LAST_PLAYED
+							p= `Once you log in below, we'll pull your ${session.size} most recently-played songs for you!`
+							p These will be mixed with your friends', and you'll need to guess whose recent songs a song came from.
+							p Afterwards, you'll be given the option to save the combined playlist! 
+						if session.dedupe 
+							p <strong>Note that, if an artist has multiple songs, only the first song from each artist will be taken.</strong><br>This may result in fewer than #{session.size} being pulled for you.
+						a.btn.btn-primary#authLink(href="/" + session.id + "/login") Log in here to begin!	
+						.d-flex.w-100.justify-content-center.d-none#successText
+							p.text-success Successfully logged in!
+						hr
+					
+					.d-flex.w-100.justify-content-center.flex-column.d-none#nameStep
+						label.form-label(for="name") Put in your name, so your friends can tell it's you:
+						input#name.form-control(type="text", name="name")
+						if session.mode == session_modes.CUSTOM_PLAYLIST
+							label.form-label(for="playlistLink") Then, put a link to your playlist below:
+							input#playlistLink.form-control(type="text", name="playlistLink")
+						
+						button.btn.btn-primary(onclick="submitSongs()") Submit your songs!
+						hr
+					
+					.d-flex.w-100.justify-content-center.flex-column.d-none#waitStep
+						h3.mb-3 Submitted users:
+						.ms-5.mb-3
+							ul#usersList.list-group
+						.d-none#notEnoughWarning
+							p Some users don't have the maximum amount of songs.<br>That's fine! The quiz will just be a bit shorter.
+						
+						h5 Wait until everyone's in, then start the quiz!
+						button.btn.btn-primary#startQuizButton(onclick="startQuiz()") Start quiz
+						.mt-3
+							input#includeMe(type="checkbox", name="includeMe")
+							label.ms-2(for="includeMe") Include my own songs in the quiz
 		script(src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js", integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz", crossorigin="anonymous") 
+		script. 
+			const session_mode = !{JSON.stringify(session.mode)}
+			const session = !{JSON.stringify(session)}
+			const session_modes = !{JSON.stringify(session_modes)}
+			let user_refresh_interval = null
+
+			function getCookie(key) {
+				obj = {}
+				list = document.cookie.split(";")
+				for (x in list) {
+					if (list[x]) {
+						pair = list[x].split("=", 2)
+						obj[pair[0].trim()] = pair[1].trim()
+					}
+				}
+				return obj[key]
+			}
+
+			function getRequest(url, header) {
+				return new Promise((res, rej) => {
+					let submitReq = new XMLHttpRequest()
+					let loaded = function() {
+						if (this.status > 399) {
+							rej(this)
+						} else {
+							res(this)
+						}
+					}
+					submitReq.addEventListener("load", loaded);
+					submitReq.open("GET", url)
+					for (let i in header) {
+						submitReq.setRequestHeader(i, header[i])
+					}
+					submitReq.send()
+				})
+			}
+
+			function postRequest(url, body, header={}) {
+				return new Promise((res, rej) => {
+					let submitReq = new XMLHttpRequest();
+					let loaded = function() {
+						if (this.status > 399) {
+							rej(this)
+						} else {
+							res(this)
+						}
+					}
+					submitReq.addEventListener("load", loaded);
+					submitReq.open("POST", url);
+					for (let i in header) {
+						submitReq.setRequestHeader(i, header[i])
+					}
+					submitReq.send(JSON.stringify(body));
+				})
+			}
+
+			async function submitSongs() {
+				let name = document.querySelector("#name").value
+				if (!name) {
+					alert("Name is required")
+					return
+				}
+
+				let uri_match = null
+
+				if (session.mode == session_modes.CUSTOM_PLAYLIST) {
+					let playlist_selected = document.querySelector("#playlistLink").value
+					uri_match = playlist_selected.match(/playlist\/(\w+)/i)
+					if (!uri_match) {
+						alert("Invalid playlist link! Make sure your playlist link works!")
+						return
+					} else {
+						uri_match = uri_match[1]
+					}
+				}
+
+				try {
+					let response = await postRequest(`/${session.id}/addUser`, {name: name}, {"Content-type": "application/json"})
+					if (response.status != 200) {
+						alert("Unable to add user")
+						return
+					}
+					
+					try {
+						console.log(response.responseText)
+						let user_id = JSON.parse(response.responseText).userId
+						let loaded_songs = []
+						let submitting_songs = []
+						if (session.mode == session_modes.CUSTOM_PLAYLIST) {
+							loaded_songs = await getRequest(
+								`https://api.spotify.com/v1/playlists/${uri_match}/tracks?limit=50`,
+								{ Authorization: `Bearer ${getCookie("spotify_token")}` }
+							)
+						} else if (session.mode == session_modes.TOP_SONGS) {
+							loaded_songs = await getRequest(
+								`https://api.spotify.com/v1/me/top/tracks?limit=50&time_range=${session.top_songs_range}`,
+								{ Authorization: `Bearer ${getCookie("spotify_token")}` }
+							)
+						} else if (session.mode == session_modes.LIKED_SONGS) {
+							loaded_songs = await getRequest(
+								`https://api.spotify.com/v1/me/tracks?limit=50`,
+								{ Authorization: `Bearer ${getCookie("spotify_token")}` }
+							)
+						} else if (session.mode == session_modes.LAST_PLAYED) {
+							loaded_songs = await getRequest(
+								`https://api.spotify.com/v1/me/player/recently-played?limit=50`,
+								{ Authorization: `Bearer ${getCookie("spotify_token")}` }
+							)
+						}
+						console.log(loaded_songs)
+						loaded_songs = JSON.parse(loaded_songs.responseText).items
+						let artists = {}
+						console.log(session.mode)
+						console.log(session_modes)
+						console.log(loaded_songs)
+						for (let i of loaded_songs) {
+							if (session.dedupe) {
+								let found_match = false;
+								for (let j of (i.track || i).artists) {
+									if (j.id in artists) {
+										found_match = true
+									} else {
+										artists[j.id] = (i.track || i).id
+									}
+								}
+								if (found_match) {
+									continue
+								}
+							}
+							submitting_songs.push((i.track || i).id)
+							if (submitting_songs.length >= session.size) {
+								break
+							}
+						}
+						console.log(submitting_songs)
+						await postRequest(
+							`/${session.id}/${user_id}/addSongs`,
+							{songs: submitting_songs},
+							{"Content-type": "application/json"}
+						)
+						document.querySelector("#waitStep").classList.remove("d-none")
+						user_refresh_interval = setInterval(refreshUsers, 2000)
+						refreshUsers()
+					} catch (err) {
+						alert("Unable to submit songs!")
+						console.error(err)
+						return
+					}
+				} catch (err) {
+					alert("Unable to add user")
+					console.error(err)
+					return
+				}
+			}
+
+			function refreshUsers() {
+				getRequest(`/${session.id}/users`).then((res) => {
+					let users_list = JSON.parse(res.responseText).users
+					console.log(users_list)
+					let display_div = document.querySelector("#usersList")
+					let warning_div = document.querySelector("#notEnoughWarning")
+					warning_div.classList.add("d-none")
+					display_div.innerHTML = ''
+					for (let user of users_list) {
+						let to_add = document.createElement("li")
+						to_add.innerText = `${user.name} (${user.song_count}/${session.size})`
+						display_div.appendChild(to_add)
+						if (user.song_count < session.size) {
+							warning_div.classList.remove("d-none")
+						}
+					}
+					/* Enable before publishing!
+					if (users_list.length > 1) {
+						document.querySelector("#startQuizButton").disabled = false
+					} else {
+						document.querySelector("#startQuizButton").disabled = true
+					}
+					if (users_list.length > 2) {
+						document.querySelector("#includeMe").disabled = false
+					} else {
+						document.querySelector("#includeMe").disabled = true
+						document.querySelector("#includeMe").checked = true
+					}*/
+				}).catch((res) => {
+					console.error(res)
+				})
+			}
+
+			function startQuiz() {
+				window.location.href = `/${session.id}/quiz?includeMe=${document.querySelector("#includeMe").checked ? 1 : 0}`
+			}
+
+			window.onload = () => {
+				let token = getCookie("spotify_token")
+				let refresh_token = getCookie("refresh_cookie")
+				let user = getCookie("user")
+				console.log(token)
+				console.log(refresh_token)
+				console.log(user)
+				if ((!token) && refresh_token) {
+					console.log("Trying to refresh token")
+					getRequest(`/${session.id}/refresh_token`).then((response) => {
+						console.log(response)
+						if (response.status == 200) {
+							console.log(response.responseText)
+							location.reload()
+						} else {
+							console.error(response.responseText)
+							alert("Renewing Spotify token failed - please log in again!")
+						}
+					}).catch((response) => {
+						console.error(response.responseText)
+						alert("Renewing Spotify token failed - please log in again!")
+					})
+				}
+				if (token) {
+					document.querySelector("#nameStep").classList.remove("d-none")
+					document.querySelector("#authLink").classList.add("disabled")
+					document.querySelector("#successText").classList.remove("d-none")
+				}
+				if (user) {
+					document.querySelector("#waitStep").classList.remove("d-none")
+					user_refresh_interval = setInterval(refreshUsers, 2000)
+					refreshUsers()
+				}
+			}

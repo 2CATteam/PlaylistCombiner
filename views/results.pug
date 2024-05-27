@@ -24,29 +24,10 @@ html
 					button.btn.btn-primary(onclick="savePlaylist()") Save combined playlist to Spotify!
 		script(src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous") 
 		script.
-			function savePlaylist() {
-				//TODO: This
+			async function savePlaylist() {
+				
 			}
-
-			function getRequest(url, header) {
-				return new Promise((res, rej) => {
-					let submitReq = new XMLHttpRequest()
-					let loaded = function() {
-						if (this.status > 399) {
-							rej(this)
-						} else {
-							res(this)
-						}
-					}
-					submitReq.addEventListener("load", loaded);
-					submitReq.open("GET", url)
-					for (let i in header) {
-						submitReq.setRequestHeader(i, header[i])
-					}
-					submitReq.send()
-				})
-			}
-
+			
 			window.onload = () => {
 				let token = getCookie("spotify_token")
 				let refresh_token = getCookie("refresh_cookie")

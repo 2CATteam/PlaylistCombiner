@@ -1,7 +1,6 @@
 'use-strict'
 const sqlite3 = require('sqlite3');
 const axios = require('axios');
-const shuffleSeed = require('shuffle-seed');
 
 //Class used for connecting to the DB
 class SpotifyDBTools {
@@ -317,10 +316,128 @@ class SpotifyDBTools {
                 if (err) {
                     rej(err);
                 } else {
-                    //Shuffle the array of rows
-                    rows = shuffleSeed.shuffle(rows, rows.length)
                     //Resolve with the array of songs
                     res(rows);
+                }
+            })
+        })
+    }
+
+    async checkAnswers(session, songs_order, answers_given) {
+        //Reject if connection not ready
+        if (!this.connection_ready) {
+            rej(new Error("DB Connection was not ready!"));
+            return;
+        }
+        // Return object should be an array of the following form:
+        /*
+            {
+                song_id: <id>,
+                given_answer: {
+                    id: <user_id>,
+                    name: <user_name>
+                },
+                correct_answers: [
+                    {
+                        id: <user_id>,
+                        name: <user_name>
+                    }
+                ],
+                song_data: <song_id_from_Spotify>,
+                song_html: <song_html>,
+                correct: true/false
+                correct_answer_string: <comma-separated list of names>
+            }
+        */
+        let to_return = []
+        //First, add the song
+        for (let i of songs_order) {
+            to_return.push({song_id: i})
+        }
+        let users = await this.getUsers(session);
+        //Fill in users
+        for (let i in answers_given) {
+            for (let j in users) {
+                if (users[j].id == answers_given[i]) {
+                    to_return[i].given_answer = {
+                        id: answers_given[i],
+                        name: users[j].name
+                    }
+                }
+            }
+        }
+        //Fill in correct answers and song data
+        for (let i in to_return) {
+            to_return[i].correct_answers = await this.getAnswers(to_return[i].song_id)
+            let song_data = await this.getSong(to_return[i].song_id)
+            to_return[i].song_data = song_data.song
+            to_return[i].song_html = song_data.html
+        }
+        //Mark if correct
+        for (let i of to_return) {
+            i.correct_answer_string = ""
+            i.correct = false
+            for (let j of i.correct_answers) {
+                if (i.given_answer.id == j.id) {
+                    i.correct = true
+                }
+                i.correct_answer_string += j.name
+                i.correct_answer_string += ", "
+            }
+            i.correct_answer_string = i.correct_answer_string.substring(0, i.correct_answer_string.length - 2)
+        }
+        return to_return
+    }
+
+    getAnswers(song_id) {
+        //Promise wrapper
+        return new Promise((res, rej) => {
+            //Reject if connection not ready
+            if (!this.connection_ready) {
+                rej(new Error("DB Connection was not ready!"));
+                return;
+            }
+            this.connection.all(`
+                SELECT users.id AS id, users.name AS name
+                FROM songs song_with_id
+                INNER JOIN songs song_with_data ON song_with_id.song = song_with_data.song
+                INNER JOIN users ON song_with_data.user = users.id
+                WHERE
+                    song_with_id.id = ?
+                ORDER BY users.name ASC
+            `, song_id, function(err, rows) {
+                //Throw any error
+                if (err) {
+                    rej(err);
+                } else {
+                    //Resolve with the array of users
+                    res(rows);
+                }
+            })
+        })
+    }
+
+    getSong(song_id) {
+        //Promise wrapper
+        return new Promise((res, rej) => {
+            //Reject if connection not ready
+            if (!this.connection_ready) {
+                rej(new Error("DB Connection was not ready!"));
+                return;
+            }
+            this.connection.get(`
+                        SELECT song, html
+                        FROM songs
+                        WHERE
+                            id = ?
+                    `,
+                    song_id, function(err, row) {
+                //Throw any error
+                if (err) {
+                    rej(err);
+                } else {
+                    //Resolve with song data
+                    res(row);
                 }
             })
         })

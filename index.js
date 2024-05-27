@@ -1,3 +1,4 @@
+const shuffleSeed = require('shuffle-seed');
 const express = require('express')
 const app = express()
 const axios = require('axios')
@@ -32,10 +33,13 @@ app.get('/:session([0-9A-F]{8})/', async function (req, res) {
 })
 
 app.get('/:session([0-9A-F]{8})/quiz', async function (req, res) {
+	let songs = await db.getSongs(req.params.session)
+	//Shuffle the array of songs
+	songs = shuffleSeed.shuffle(songs, songs.length)
 	res.render("quiz", {
 		session: await db.getSession(req.params.session),
 		users: await db.getUsers(req.params.session),
-		songs: await db.getSongs(req.params.session),
+		songs: songs,
 		this_user: req.cookies.user,
 		include_me: req.query.includeMe
 	})
@@ -49,58 +53,14 @@ app.get("/:session([0-9A-F]{8})/submit", async function(req, res) {
 
 app.get("/:session([0-9A-F]{8})/results", async function(req, res) {
 	let quiz_songs = req.cookies.songs.split(",")
-	console.log(quiz_songs)
 	res.clearCookie("songs")
 	let quiz_answers = req.cookies.answers.split(",")
 	res.clearCookie("answers")
 
-	let songs = await db.getSongs(req.params.session)
-	let users = await db.getUsers(req.params.session)
-	let filled_answers = []
-	for (let i in quiz_songs) {
-		filled_answers.push({
-			song_id: quiz_songs[i],
-			given_answer: { id: quiz_answers[i], name: "UNKNOWN"},
-			correct_answers: []
-		})
-		for (let j in songs) {
-			if (songs[j].song_id == quiz_songs[i]) {
-				filled_answers[i].song_data = songs[j].song
-				continue
-			}
-		}
-		for (let j in songs) {
-			if (songs[j].song == filled_answers[i].song_data) {
-				filled_answers[i].song_html = songs[j].html
-				filled_answers[i].correct_answers.push({id: songs[j].user_id, name: songs[j].name})
-			}
-		}
-		for (let j of users) {
-			if (filled_answers[i].given_answer.id == j.id) {
-				filled_answers[i].given_answer.name = j.name
-			}
-		}
-	}
-
-	for (let i in filled_answers) {
-		filled_answers[i].correct = false
-		filled_answers[i].correct_answer_string = ""
-		for (let j in filled_answers[i].correct_answers) {
-			if (filled_answers[i].correct_answers[j].id == filled_answers[i].given_answer.id) {
-				filled_answers[i].correct = true
-			}
-			filled_answers[i].correct_answer_string += filled_answers[i].correct_answers[j].name
-			if (j != filled_answers[i].correct_answers.length - 1) {
-				filled_answers[i].correct_answer_string += ", "
-			}
-		}
-	}
-
-	console.log(filled_answers)
-
+	let filled_answers = await db.checkAnswers(req.params.session, quiz_songs, quiz_answers)
 	res.render("results", {
 		session: await db.getSession(req.params.session),
-		songs: songs,
+		songs: await db.getSongs(req.params.session),
 		filled_answers: filled_answers
 	})
 })

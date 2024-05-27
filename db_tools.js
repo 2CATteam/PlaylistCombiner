@@ -1,6 +1,7 @@
 'use-strict'
 const sqlite3 = require('sqlite3');
 const axios = require('axios');
+const shuffleSeed = require('shuffle-seed');
 
 //Class used for connecting to the DB
 class SpotifyDBTools {
@@ -304,10 +305,10 @@ class SpotifyDBTools {
             }
             //Select the ID, name, and song count
             this.connection.all(`
-                        SELECT songs.id, songs.song, songs.html, user.id, user.name
+                        SELECT songs.id, songs.song, songs.html, users.id, users.name
                         FROM users, songs
                         WHERE
-                            songs.user = user.id
+                            songs.user = users.id
                             AND songs.session = ?
                         ORDER BY songs.song ASC
                     `,
@@ -316,6 +317,8 @@ class SpotifyDBTools {
                 if (err) {
                     rej(err);
                 } else {
+                    //Shuffle the array of rows
+                    shuffleSeed.shuffle(rows, rows.length)
                     //Resolve with the array of songs
                     res(rows);
                 }

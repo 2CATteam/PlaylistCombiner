@@ -34,13 +34,68 @@ app.get('/:session([0-9A-F]{8})/', async function (req, res) {
 app.get('/:session([0-9A-F]{8})/quiz', async function (req, res) {
 	res.render("quiz", {
 		session: await db.getSession(req.params.session),
-		songs: await db.getSongs(req.params.session)
+		users: await db.getUsers(req.params.session),
+		songs: await db.getSongs(req.params.session),
+		this_user: req.cookies.user,
+		include_me: req.query.includeMe
 	})
 })
 
 app.get(":session([0-9A-F]{8})/submit", async function(req, res) {
 	//TODO: This
-	res.render("root", {session: await db.getSession(req.params.session)})
+	console.log(req.query.answers)
+	console.log(req.query.songs)
+	let songs = await db.getSongs(req.params.session)
+	let users = await db.getUsers(req.params.session)
+	console.log(songs)
+	let filled_answers = []
+	for (let i in req.query.songs) {
+		filled_answers.push({
+			song_id: req.query.songs[i],
+			given_answer: { id: req.query.answers[i], name: "UNKNOWN"},
+			correct_answers: []
+		})
+		for (let j in songs) {
+			if (songs[j].id == req.query.songs[i]) {
+				filled_answers[i].song_data = songs[j].song
+				filled_answers[i].song_html = songs[j].song_html
+				filled_answers[i].correct_answers.push({id: songs[j].userId, name: songs[j].name})
+			}
+		}
+		for (let j of users) {
+			if (filled_answers[i].given_answer.id == users[j].id) {
+				filled_answers[i].given_answer.name = users[j].name
+			}
+		}
+	}
+
+	for (let i in filled_answers) {
+		filled_answers[i].correct = false
+		filled_answers[i].correct_answer_string = ""
+		for (let j in filled_answers[i].correct_answers) {
+			if (filled_answers[i].correct_answers[j].id == filled_answers[i].given_answer.id) {
+				filled_answers[i].correct = true
+			}
+			filled_answers[i].correct_answer_string += filled_answers[i].correct_answers[j].name
+			if (j != filled_answers[i].correct_answers.length - 1) {
+				filled_answers[i].correct_answer_string += ", "
+			}
+		}
+	}
+
+	res.cookie("filled_answers", filled_answers)
+
+	res.redirect(`/${req.params.session}/results`)
+})
+
+app.get(":session([0-9A-F]{8})/results", async function(req, res) {
+	let filled_answers = req.cookies.filled_answers
+	res.clearCookie("filled_answers")
+	res.render("results", {
+		session: await db.getSession(req.params.session),
+		songs: await db.getSongs(req.params.session),
+		filled_answers: filled_answers
+	})
 })
 
 app.post("/addSession", function(req, res) {
@@ -92,7 +147,7 @@ app.post("/:session([0-9A-F]{8})/addUser", function(req, res) {
 		res.status(400).json({error: "Invalid name!"});
 	} else {
 		db.addUser(req.params.session, req.body?.name, req.cookies?.user).then((id) => {
-			res.cookie("user", id || req.cookies?.user)
+			res.cookie("user", id || req.cookies?.user, {path: `/${req.params.session}`})
 			res.status(200).json({userId: id || req.cookies?.user})
 		}).catch((err) => {
 			res.status(400).json({error: err})
@@ -106,14 +161,12 @@ app.post("/:session([0-9A-F]{8})/:user/addSongs", function(req, res) {
 	} else if (!req.params.user) {
 		res.status(400).json({error: "Invalid user!"});
 	} else if (!req.body?.songs) {
-		console.log(req.body)
 		res.status(400).json({error: "Invalid song list!"});
 	} else {
 		db.addSongs(req.params.session, req.params.user, req.body.songs).then((count) => {
 			res.status(200).json({songsAdded: count})
 			db.loadSongsHTML(req.params.session)
 		}).catch((err) => {
-			console.log("Returning error")
 			res.status(400).json({error: err})
 		});
 	}

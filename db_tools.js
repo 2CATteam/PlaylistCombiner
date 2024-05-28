@@ -368,7 +368,7 @@ class SpotifyDBTools {
         }
         //Fill in correct answers and song data
         for (let i in to_return) {
-            to_return[i].correct_answers = await this.getAnswers(to_return[i].song_id)
+            to_return[i].correct_answers = await this.getAnswers(session, to_return[i].song_id)
             let song_data = await this.getSong(to_return[i].song_id)
             to_return[i].song_data = song_data.song
             to_return[i].song_html = song_data.html
@@ -389,7 +389,7 @@ class SpotifyDBTools {
         return to_return
     }
 
-    getAnswers(song_id) {
+    getAnswers(session, song_id) {
         //Promise wrapper
         return new Promise((res, rej) => {
             //Reject if connection not ready
@@ -404,8 +404,9 @@ class SpotifyDBTools {
                 INNER JOIN users ON song_with_data.user = users.id
                 WHERE
                     song_with_id.id = ?
+                    AND song_with_data.session = ?
                 ORDER BY users.name ASC
-            `, song_id, function(err, rows) {
+            `, song_id, session, function(err, rows) {
                 //Throw any error
                 if (err) {
                     rej(err);

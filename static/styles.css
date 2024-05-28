@@ -3,8 +3,6 @@
 		flex-direction: column;
 		padding-left: 1rem;
 		padding-right: 1rem;
-		margin-left: 0.5rem;
-		margin-right: 0.5rem;
 	}
 
 	.landscapeOnly {
@@ -14,6 +12,10 @@
 	.root-half {
 		flex-grow: 0;
 	}
+	.bg-success {
+		padding-left: 0.5rem;
+		padding-right: 0.5rem;
+	}
 }
 
 @media (orientation: landscape) {
@@ -21,8 +23,6 @@
 		flex-direction: row;
 		padding-left: 3rem;
 		padding-right: 3rem;
-		margin-left: 3rem;
-		margin-right: 3rem;
 	}
 
 	.portraitOnly {
@@ -31,6 +31,11 @@
 
 	.root-half {
 		flex-grow: 1;
+	}
+
+	.bg-success {
+		padding-left: 3rem;
+		padding-right: 3rem;
 	}
 }
 

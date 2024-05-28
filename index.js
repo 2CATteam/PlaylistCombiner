@@ -81,7 +81,7 @@ app.post("/addSession", function(req, res) {
 		name: req.body?.name,
 		size: req.body?.size,
 		mode: req.body?.mode,
-		dedupe: req.body?.mode,
+		dedupe: req.body?.dedupe,
 		top_songs_range: req.body?.top_songs_range
 	};
 	if (!sessionSettings.name) {

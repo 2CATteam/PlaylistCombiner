@@ -50,7 +50,8 @@ app.get('/:session([0-9A-F]{8})/quiz', async function (req, res) {
 
 app.get("/:session([0-9A-F]{8})/submit", async function(req, res) {
 	if (!(req.query?.songs?.length) || !(req.query?.songs?.answers))  {
-		res.redirect(`/${req.params.session}/results`)	
+		res.redirect(`/${req.params.session}/results`)
+		return
 	}
 	res.cookie("songs", req.query.songs, {httpOnly: true})
 	res.cookie("answers", req.query.answers, {httpOnly: true})

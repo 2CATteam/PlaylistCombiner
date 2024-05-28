@@ -195,18 +195,20 @@ html
 							warning_div.classList.remove("d-none")
 						}
 					}
-					/* Enable before publishing!
-					if (users_list.length > 1) {
+					// Enable before publishing!
+					///*
+					if (users_list.length > 0) {
 						document.querySelector("#startQuizButton").disabled = false
 					} else {
 						document.querySelector("#startQuizButton").disabled = true
 					}
-					if (users_list.length > 2) {
+					if (users_list.length > 1) {
 						document.querySelector("#includeMe").disabled = false
 					} else {
 						document.querySelector("#includeMe").disabled = true
 						document.querySelector("#includeMe").checked = true
-					}*/
+					}
+					//*/
 				}).catch((res) => {
 					console.error(res)
 				})

@@ -49,8 +49,9 @@ app.get('/:session([0-9A-F]{8})/quiz', async function (req, res) {
 })
 
 app.get("/:session([0-9A-F]{8})/submit", async function(req, res) {
-	console.log(req.query.songs)
-	if (!(req.query?.songs?.length) || !(req.query?.songs?.answers))  {
+	if (!(req.query?.songs?.length) || !(req.query?.answers?.length))  {
+		res.cookie.clearCookie("songs")
+		res.cookie.clearCookie("answers")
 		res.redirect(`/${req.params.session}/results`)
 		return
 	}
@@ -204,7 +205,7 @@ function getAuth(req, res, options, callback) {
 		res.cookie("spotify_token", response.data.access_token, {
 			maxAge: (response.data.expires_in || 10) * 1000
 		})
-		res.cookie("refresh_cookie", response.data.refresh_token)
+		res.cookie("refresh_cookie", response.data.refresh_token || req.cookies.refresh_cookie)
 		callback(req, res)
 		
 	}).catch(err_handler)

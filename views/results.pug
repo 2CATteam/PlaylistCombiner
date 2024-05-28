@@ -39,7 +39,7 @@ html
 				}
 
 				let song_uris = []
-				let song_list = JSON.parse((await getRequest(`/${session.id}/songs`)).responseText)
+				let song_list = JSON.parse((await getRequest(`/#{session.id}/songs`)).responseText)
 				for (let song of song_list.songs) {
 					song_uris.push(`spotify:track:${song.song}`)
 				}

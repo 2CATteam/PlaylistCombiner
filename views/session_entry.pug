@@ -55,7 +55,7 @@ html
 							p Some users don't have the maximum amount of songs.<br>That's fine! The playlist will just be a bit shorter.
 						
 						h3 Wait until everyone's in, then save the playlist!
-						button.btn.btn-primary.mb-2(onclick="savePlaylist()") Save combined playlist to Spotify!
+						button.btn.btn-primary.mb-2#savePlaylistButton(onclick="savePlaylist()") Save combined playlist to Spotify!
 						button.btn.btn-primary#startQuizButton(onclick="startQuiz()") Take a quiz on the playlist!
 						.mt-3.mb-2
 							input#includeMe(type="checkbox", name="includeMe")
@@ -188,19 +188,15 @@ html
 							warning_div.classList.remove("d-none")
 						}
 					}
-					// Enable before publishing!
-					///*
 					if (users_list.length > 0) {
 						document.querySelector("#startQuizButton").disabled = false
-					} else {
-						document.querySelector("#startQuizButton").disabled = true
-					}
-					if (users_list.length > 1) {
+						document.querySelector("#savePlaylistButton").disabled = false
 						document.querySelector("#includeMe").disabled = false
 					} else {
+						document.querySelector("#startQuizButton").disabled = true
+						document.querySelector("#savePlaylistButton").disabled = true
 						document.querySelector("#includeMe").disabled = true
 					}
-					//*/
 				}).catch((res) => {
 					console.error(res)
 				})

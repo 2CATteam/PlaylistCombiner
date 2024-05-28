@@ -49,6 +49,7 @@ app.get('/:session([0-9A-F]{8})/quiz', async function (req, res) {
 })
 
 app.get("/:session([0-9A-F]{8})/submit", async function(req, res) {
+	console.log(req.query.songs)
 	if (!(req.query?.songs?.length) || !(req.query?.songs?.answers))  {
 		res.redirect(`/${req.params.session}/results`)
 		return

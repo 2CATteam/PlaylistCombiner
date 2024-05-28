@@ -14,30 +14,22 @@ html
 				.d-flex.flex-column.align-items-stretch
 					h3.mb-3.text-center= session.name 
 					.d-flex.w-100.justify-content-center.flex-column#loginStep
-						h5.wrap-text Welcome! You've been invited to play a game of song guessing!
+						h5.wrap-text Welcome! You've been invited to share your favorite songs!
 						
 						if session.mode == session_modes.CUSTOM_PLAYLIST
 							p= `Once you log in below with Spotify, you'll be asked to provide a playlist of at least ${session.size} songs.`
-							p This playlist will be mixed with your friends', and you'll need to guess whose playlist a song came from.
-							p Afterwards, you'll be given the option to save the combined playlist! 
-							if session.dedupe 
-								p Note that, if an artist has multiple songs on your playlist, only the first song from each artist will be taken.
 						if session.mode == session_modes.TOP_SONGS
 							- let range = "UNKNOWN"
 							- if (session.top_songs_range == "short_term") range = "month"
 							- if (session.top_songs_range == "medium_term") range = "6 months"
 							- if (session.top_songs_range == "long_term") range = "year (or so)"
 							p= `Once you log in below with Spotify, we'll pull your top ${session.size} songs from the last ${range} for you!`
-							p These will be mixed with your friends', and you'll need to guess whose Top Songs a song came from.
-							p Afterwards, you'll be given the option to save the combined playlist! 
 						if session.mode == session_modes.LIKED_SONGS
 							p= `Once you log in below with Spotify, we'll pull your ${session.size} most recently-liked songs for you!`
-							p These will be mixed with your friends', and you'll need to guess whose Liked Songs a song came from.
-							p Afterwards, you'll be given the option to save the combined playlist! 
 						if session.mode == session_modes.LAST_PLAYED
 							p= `Once you log in below with Spotify, we'll pull your ${session.size} most recently-played songs for you!`
-							p These will be mixed with your friends', and you'll need to guess whose recent songs a song came from.
-							p Afterwards, you'll be given the option to save the combined playlist! 
+						p These songs will be shuffled in with your friends', to build a shared playlist.
+						p Afterwards, you'll be given the option to take a quiz on the combined playlist!
 						if session.dedupe 
 							p <strong>Note that, if an artist has multiple songs, only the first song from each artist will be taken.</strong><br>This may result in fewer than #{session.size} being pulled for you.
 						a.btn.btn-primary#authLink(href="/" + session.id + "/login") Click here to log in with Spotify!	
@@ -60,13 +52,14 @@ html
 						.ms-5.mb-3
 							ul#usersList.list-group
 						.d-none#notEnoughWarning
-							p Some users don't have the maximum amount of songs.<br>That's fine! The quiz will just be a bit shorter.
+							p Some users don't have the maximum amount of songs.<br>That's fine! The playlist will just be a bit shorter.
 						
-						h5 Wait until everyone's in, then start the quiz!
-						button.btn.btn-primary#startQuizButton(onclick="startQuiz()") Start quiz
+						h3 Wait until everyone's in, then save the playlist!
+						button.btn.btn-primary.mb-2(onclick="savePlaylist()") Save combined playlist to Spotify!
+						button.btn.btn-primary#startQuizButton(onclick="startQuiz()") Take a quiz on the playlist!
 						.mt-3.mb-2
 							input#includeMe(type="checkbox", name="includeMe")
-							label.ms-2(for="includeMe") Include my own songs in the quiz
+							label.ms-2(for="includeMe") Include my own songs in the playlist
 		script(src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js", integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz", crossorigin="anonymous") 
 		script. 
 			const session_mode = !{JSON.stringify(session.mode)}
@@ -206,12 +199,47 @@ html
 						document.querySelector("#includeMe").disabled = false
 					} else {
 						document.querySelector("#includeMe").disabled = true
-						document.querySelector("#includeMe").checked = true
 					}
 					//*/
 				}).catch((res) => {
 					console.error(res)
 				})
+			}
+
+			async function savePlaylist() {
+				let me_data = await getRequest("https://api.spotify.com/v1/me", 
+					{ Authorization: `Bearer ${getCookie("spotify_token")}` }
+				)
+				let user_uri = JSON.parse(me_data.responseText).id
+				if (!user_uri) {
+					console.error(me_data)
+					alert("Unable to save playlist - unable to retrieve Spotify User ID")
+					return
+				}
+
+				let song_uris = []
+				let song_list = JSON.parse((await getRequest(`/${session.id}/songs`)).responseText)
+				for (let song of song_list) {
+					song_uris.push(`spotify:track:${song.song}`)
+				}
+
+				let new_playlist = await postRequest(`https://api.spotify.com/v1/users/${user_uri}/playlists`, 
+					{
+						name: "#{session.name}",
+						description: `Created by Spotify Guessing Game - ${window.location.hostname}`,
+						public: false
+					},
+					{ Authorization: `Bearer ${getCookie("spotify_token")}` }
+				)
+				new_playlist = JSON.parse(new_playlist.responseText)
+				let added_items = await postRequest(`https://api.spotify.com/v1/playlists/${new_playlist.id}/tracks`, 
+					{
+						uris: song_uris
+					},
+					{ Authorization: `Bearer ${getCookie("spotify_token")}` }
+				)
+				console.log("Done! Check Spotify!")
+				alert("Successfully saved playlist!")
 			}
 
 			function startQuiz() {

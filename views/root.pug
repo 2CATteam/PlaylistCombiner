@@ -12,19 +12,19 @@ html
 		.d-flex.justify-content-center.bg-success.py-3.min-vh-100
 			.d-flex.w-100.justify-content-center.align-items-center.py-3#wrapContainer.bg-light.rounded-5
 				.d-flex.flex-column.root-half
-					h1.text-wrap Guessing Game for Spotify! 
-					p.text-wrap A game to play with your friends! 
-					p.text-wrap Can you guess who's listening to what? 
-					p.text-wrap This game will pull from your Spotify libraries, and generate a quiz! 
+					h1.text-wrap Playlist Combiner, for Spotify 
+					p.text-wrap Automatically combine your favorite songs with your friends'!  
+					p.text-wrap This game will pull from your Spotify libraries, and generate a playlist combining them all! 
 					p.text-wrap Choose from three different methods of finding your favorites:
 					p.text-wrap <strong>Top Songs, Liked Songs, or Last Played</strong>
 					p.text-wrap <strong>Alternatively,</strong> you can each provide your preferred playlist.
+					p.text-wrap Afterward, you can also take a quiz, to see if you can guess who put each song!
 				.vr.m-5.landscapeOnly
 				hr.m-5.w-100.portraitOnly
 				.d-flex.flex-column.root-half
 					h3.text-wrap Get started now! 
 					.mb-3 
-						label.form-label(for="sessionName") Session Name 
+						label.form-label(for="sessionName") Playlist Name 
 						input#sessionName.form-control(type="text", name="sessionName")
 					.mb-3 
 						label.form-label(for="songCount") Songs per Person
@@ -46,9 +46,9 @@ html
 							option(value="long_term") Long Term (1+ years)
 					.mb-3 
 						input#dedupe(type="checkbox", name="dedupe", selected)
-						label.ps-2.form-label(for="dedupe", checked) Limit one song per artist per person (Recommended)
+						label.ps-2.form-label(for="dedupe", checked) Limit one song per artist per person
 					button.btn.btn-primary(type="button", onclick="createSession()") Create session 
-					p.form-text.text-wrap You will be redirected to a page for your session. Once you get there, share the page with your friends to invite them!
+					p.form-text.text-wrap You will be redirected to a page to add your songs. Once you get there, share the page to invite people to join the playlist!
 		script(src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous") 
 		script. 
 			const TOP_SONGS_MODE = 1

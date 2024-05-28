@@ -46,7 +46,7 @@ html
 						hr
 					
 					.d-flex.w-100.justify-content-center.flex-column.d-none#nameStep
-						label.form-label(for="name") Put in your name. Make sure your friends can tell it's you! Put a last name, if needed
+						label.form-label(for="name") Put in your name. <strong>Make sure your friends can tell it's you!</strong> Put a last name, if needed
 						input#name.form-control.mb-3(type="text", name="name", onkeydown="enterPressed()")
 						if session.mode == session_modes.CUSTOM_PLAYLIST
 							label.form-label(for="playlistLink") Then, put a link to your playlist below:

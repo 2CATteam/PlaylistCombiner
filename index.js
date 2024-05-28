@@ -158,8 +158,8 @@ app.get("/:session([0-9A-F]{8})/users", async function(req, res) {
 	res.status(200).json({users: await db.getUsers(req.params.session)})
 });
 
-app.get("/:session([0-9A-F]{8})/songs", function(req, res) {
-	res.status(200).json({songs: db.getSongs(req.params.session)})
+app.get("/:session([0-9A-F]{8})/songs", async function(req, res) {
+	res.status(200).json({songs: await db.getSongs(req.params.session)})
 });
 
 //https://stackoverflow.com/questions/20728783/shortest-code-to-get-random-string-of-numbers-and-letters

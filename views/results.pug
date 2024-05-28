@@ -16,7 +16,7 @@ html
 					button.btn.btn-primary(onclick="savePlaylist()") Save combined playlist to Spotify!
 					hr.m3
 					each song, idx in filled_answers 
-						.d-flex.flex-column.align-items-stretch.guess-div(style="min-width: 456px")
+						.d-flex.flex-column.align-items-stretch.guess-div(style="min-width: min(456px, 90vw)")
 							h3= "Song #" + (idx + 1)
 							!= song.song_html
 							p.d-none= song.song_data

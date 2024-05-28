@@ -15,7 +15,7 @@ html
 					each song in songs 
 						if include_me == 1 || (song.user_id != this_user)
 							- idx += 1
-							.d-flex.flex-column.align-items-stretch.guess-div(style="min-width: min(456px, 90%)")
+							.d-flex.flex-column.align-items-stretch.guess-div(style="min-width: min(456px, 90vw)")
 								h3= "Song #" + idx
 								!= song.html
 								p.d-none= song.song_id

@@ -67,6 +67,10 @@ app.get("/:session([0-9A-F]{8})/results", async function(req, res) {
 		res.status(400).end()
 		return
 	}
+	if (!quiz_songs.length || !quiz_answers.length) {
+		res.status(400).end()
+		return
+	}
 
 	let filled_answers = await db.checkAnswers(req.params.session, quiz_songs, quiz_answers)
 	res.render("results", {

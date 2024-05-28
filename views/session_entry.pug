@@ -46,11 +46,11 @@ html
 						hr
 					
 					.d-flex.w-100.justify-content-center.flex-column.d-none#nameStep
-						label.form-label(for="name") Put in your name, so your friends can tell it's you:
-						input#name.form-control(type="text", name="name")
+						label.form-label(for="name", type="text", onkeydown="enterPressed()") Put in your name, so your friends can tell it's you:
+						input#name.form-control.mb-3(type="text", name="name")
 						if session.mode == session_modes.CUSTOM_PLAYLIST
 							label.form-label(for="playlistLink") Then, put a link to your playlist below:
-							input#playlistLink.form-control(type="text", name="playlistLink")
+							input#playlistLink.form-control.mb-3(type="text", name="playlistLink" onkeydown="enterPressed()")
 						
 						button.btn.btn-primary(onclick="submitSongs()") Submit your songs!
 						hr
@@ -73,6 +73,12 @@ html
 			const session = !{JSON.stringify(session)}
 			const session_modes = !{JSON.stringify(session_modes)}
 			let user_refresh_interval = null
+
+			function enterPressed() {
+				if(event.key === 'Enter') {
+        			submitSongs()
+    			}
+			}
 
 			async function submitSongs() {
 				let name = document.querySelector("#name").value

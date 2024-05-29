@@ -39,9 +39,12 @@ html
 				}
 
 				let song_uris = []
-				let song_list = JSON.parse((await getRequest(`/#{session.id}/songs`)).responseText)
+				let song_list = JSON.parse((await getRequest(`/${session.id}/songs`)).responseText)
+				let includeMe = document.querySelector("#includeMe").checked
 				for (let song of song_list.songs) {
-					song_uris.push(`spotify:track:${song.song}`)
+					if (includeMe || song_list.user != getCookie("user")) {
+						song_uris.push(`spotify:track:${song.song}`)
+					}
 				}
 
 				let new_playlist = await postRequest(`https://api.spotify.com/v1/users/${user_uri}/playlists`, 

@@ -207,7 +207,7 @@ class SpotifyDBTools {
     loadSongHTML(session, song) {
         let song_link = 'https://open.spotify.com/track/' + song
         song_link = encodeURIComponent(song_link)
-        axios.get("https://open.spotify.com/oembed/?url=" + song_link).then((response) => {
+        axios.get("https://open.spotify.com/oembed?url=" + song_link).then((response) => {
             this.connection.run("UPDATE songs SET html = ? WHERE session = ? AND song = ?", response.data.html, session, song);
         }).catch((err) => {
             console.error(err);
@@ -323,7 +323,7 @@ class SpotifyDBTools {
         })
     }
 
-    async checkAnswers(session, songs_order, answers_given) {
+    async checkAnswers(session, songs_order, answers_given=null) {
         //Reject if connection not ready
         if (!this.connection_ready) {
             rej(new Error("DB Connection was not ready!"));
@@ -356,12 +356,14 @@ class SpotifyDBTools {
         }
         let users = await this.getUsers(session);
         //Fill in users
-        for (let i in answers_given) {
-            for (let j in users) {
-                if (users[j].id == answers_given[i]) {
-                    to_return[i].given_answer = {
-                        id: answers_given[i],
-                        name: users[j].name
+        if (answers_given != null) {
+            for (let i in answers_given) {
+                for (let j in users) {
+                    if (users[j].id == answers_given[i]) {
+                        to_return[i].given_answer = {
+                            id: answers_given[i],
+                            name: users[j].name
+                        }
                     }
                 }
             }
@@ -378,8 +380,10 @@ class SpotifyDBTools {
             i.correct_answer_string = ""
             i.correct = false
             for (let j of i.correct_answers) {
-                if (i.given_answer.id == j.id) {
-                    i.correct = true
+                if (answers_given != null) {
+                    if (i.given_answer.id == j.id) {
+                        i.correct = true
+                    }
                 }
                 i.correct_answer_string += j.name
                 i.correct_answer_string += ", "
@@ -442,6 +446,19 @@ class SpotifyDBTools {
                 }
             })
         })
+    }
+
+    // Ingest an array of songs (as in from getSongs) and add the correct answer(s)
+    async augmentSongs(session, songs) {
+        let songs_order = []
+        for (let song of songs) {
+            songs_order.push(song.song_id)
+        }
+        let answers = await this.checkAnswers(session, songs_order, null)
+        for (let i in songs) {
+            songs[i].correct_answers = answers[i].correct_answers
+            songs[i].correct_answer_string = answers[i].correct_answer_string
+        }
     }
 }
 

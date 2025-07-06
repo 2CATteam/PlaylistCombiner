@@ -56,7 +56,8 @@ html
 						
 						h3 Wait until everyone's in, then save the playlist!
 						button.btn.btn-primary.mb-2#savePlaylistButton(onclick="savePlaylist()") Save combined playlist to Spotify!
-						button.btn.btn-secondary#startQuizButton(onclick="startQuiz()") Take a quiz on the playlist!
+						button.btn.btn-secondary.mb-2#startQuizButton(onclick="startQuiz()") Take a quiz on the playlist!
+						button.btn.btn-secondary#startIQuizButton(onclick="startInteractiveQuiz()") Take quiz (interactive)!
 						.mt-3.mb-2
 							input#includeMe(type="checkbox", name="includeMe")
 							label.ms-2(for="includeMe") Include my own songs in the playlist
@@ -190,10 +191,12 @@ html
 					}
 					if (users_list.length > 0) {
 						document.querySelector("#startQuizButton").disabled = false
+						document.querySelector("#startIQuizButton").disabled = false
 						document.querySelector("#savePlaylistButton").disabled = false
 						document.querySelector("#includeMe").disabled = false
 					} else {
 						document.querySelector("#startQuizButton").disabled = true
+						document.querySelector("#startIQuizButton").disabled = true
 						document.querySelector("#savePlaylistButton").disabled = true
 						document.querySelector("#includeMe").disabled = true
 					}
@@ -243,6 +246,10 @@ html
 
 			function startQuiz() {
 				window.location.href = `/${session.id}/quiz?includeMe=${document.querySelector("#includeMe").checked ? 1 : 0}`
+			}
+
+			function startInteractiveQuiz() {
+				window.location.href = `/${session.id}/interactive_quiz?includeMe=${document.querySelector("#includeMe").checked ? 1 : 0}`
 			}
 
 			window.onload = () => {

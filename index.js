@@ -48,6 +48,20 @@ app.get('/:session([0-9A-F]{8})/quiz', async function (req, res) {
 	})
 })
 
+app.get('/:session([0-9A-F]{8})/interactive_quiz', async function (req, res) {
+	let songs = await db.getSongs(req.params.session)
+	//Shuffle the array of songs
+	songs = shuffleSeed.shuffle(songs, songs.length)
+	await db.augmentSongs(req.params.session, songs)
+	res.render("interactive_quiz", {
+		session: await db.getSession(req.params.session),
+		users: await db.getUsers(req.params.session),
+		songs: songs,
+		this_user: req.cookies.user,
+		include_me: req.query.includeMe
+	})
+})
+
 app.get("/:session([0-9A-F]{8})/submit", async function(req, res) {
 	if (!(req.query?.songs?.length) || !(req.query?.answers?.length))  {
 		res.clearCookie("songs")

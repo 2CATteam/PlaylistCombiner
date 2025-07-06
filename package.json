@@ -14,7 +14,7 @@
     "express": "^4.19.2",
     "path": "^0.12.7",
     "pug": "^3.0.2",
-    "serve-favicon": "^2.5.0",
+    "serve-favicon": "^2.5.1",
     "shuffle-seed": "^1.1.6",
     "sqlite3": "^5.1.7"
   }
